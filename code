@@ -1,6 +1,36 @@
-code goes here
+import urllib
+
+  # baseurl = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
+  # searchurl = baseurl + "esearch.fcgi?db=pubmed&term=Charles+Wolfe"
+
+  # f =urllib.request.urlopen(searchurl)
+  # myfile = f.read()
+
+# write a function to take 1 argument then query the pubmed API with the argument as the search query
+# return the webpage as a string
 
 
+def searchpubmed(searchterm):
+    baseurl = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
+    searchurl = baseurl + "esearch.fcgi?db=pubmed&term=" + searchterm.replace(" ","+")
+    
+    f=urllib.request.urlopen(searchurl)
+    myfile=f.read()
+    return (myfile)
 
+searchpubmed("Charles Wolfe")
 
-oiushguihdsfklbhdslkfjhvjklsnkljn
+# write a second function to take a list of names, search pubmed api for them, save results in a string and return (or list?)
+
+def searchlistpubmed(*queries):
+    results =[]
+    for item in queries:
+        baseurl = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
+        searchurl = baseurl + "esearch.fcgi?db=pubmed&term=" + item.replace(" ","+")
+    
+        f=urllib.request.urlopen(searchurl)
+        myfile=f.read()
+        results.append(myfile)
+    return results
+    
+searchlistpubmed("Charles Wolfe","James Spicer", "Alistair Weir")
