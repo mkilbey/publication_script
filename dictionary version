@@ -98,6 +98,8 @@ def pm_elements_v2(tree,targets):
             # pub date
             if target[1] == 'date':
                 try:
+                    # below line works with a string of the parent tag PubDate and child tag Year (or Month)
+                    # could we use this for the other tags we are after to find the specific line? worth testing.
                     pub_dict[target[0]] = element.find('PubDate/'+str(target[0])).text
                 except AttributeError:
                     x=""
