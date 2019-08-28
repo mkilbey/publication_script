@@ -1,0 +1,190 @@
+#
+# getting the ids
+#
+
+import urllib
+
+def pm_au_search(author,affiliation):
+    #returns a string/(bytes?) of the pub med page for the search
+    baseurl = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
+    searchurl = baseurl + "esearch.fcgi?db=pubmed&retmax=1000&term=" + author.replace(" ","+") + "[au]" + affiliation.replace(" ","+") + "[ad]"
+    
+    f=urllib.request.urlopen(searchurl)
+    myfile=f.read()
+    
+    return (myfile)
+
+def pm_ids(author,affiliation):
+    #returns all ids in a list (str format)
+    f=str(pm_au_search(author,affiliation))
+    fid=f[f.find('<IdList>'):f.find('</IdList>')+9]
+    
+    fid_list=[]     
+    while True:
+        if fid.find('<Id>') == -1:
+            break
+        else:
+            fid_list.append(fid[fid.find('<Id>')+4:fid.find('</Id>')])
+            fid=fid[fid.find('</Id>')+1:]
+
+    return fid_list
+
+def pm_multiids_list (authors,affiliations):
+    #returns a list of all ids for the authors/affiliations
+    #all ids are in one list and duplicates are removed
+    #inputs must be lists
+    if type(authors)!=list or type(affiliations)!=list:
+        return "Error: arguments must be lists"
+    else:
+        id_list = []
+        for name in authors:
+            for place in affiliations:
+                id_list.extend(pm_ids(name,place))
+        id_list = list(set(id_list))
+        return id_list
+
+#search pubmed api for full publication data
+#baseurl = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
+#fetchurl = "efetch.fcgi?db=pubmed&retmode=xml&id="
+#pmid = "28257792"
+
+def pm_id_search(pm_id):
+    #returns a bytes? of the pub med page for the search
+    baseurl = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/"
+    searchurl = baseurl + "efetch.fcgi?db=pubmed&retmode=xml&id=" + pm_id
+    #print (searchurl)
+    f=urllib.request.urlopen(searchurl)
+    myfile=f.read()
+    
+    return (myfile)
+    
+#
+# getting the info from ids
+#
+
+import xml.etree.ElementTree as ET
+import itertools
+
+def pm_element(tree,target):
+    itertree = tree.iter()
+    while True:
+        try:
+            x = itertree.__next__()
+            if x.tag == target:
+                return x.text
+        except StopIteration:
+            return ""
+
+def pm_element_pubdate(tree,unit):
+    itertree = tree.iter()
+    while True:
+        x = itertree.__next__()
+        if x.tag == "PubDate":
+            while True:
+                if x.tag == unit:
+                    return x.text
+                x = itertree.__next__()
+
+def pm_element_doi(tree):
+    itertree = tree.iter()
+    while True:
+        try:
+            x = itertree.__next__()
+            if x.tag == "ELocationID":
+                while True:
+                    if x.attrib['EIdType']=='doi':
+                        return x.text
+                    x = itertree.__next__()
+        except StopIteration:
+            return ""
+                
+def pm_element_authors(tree):
+    itertree = tree.iter()
+    authors = ""
+    ln = ""
+    fn = ""
+    while True:
+        try:
+            x = itertree.__next__()
+            if x.tag == "AuthorList":
+                while True:
+                    x = itertree.__next__()
+                    if x.tag == "LastName":
+                        ln = x.text
+                    if x.tag == "ForeName":
+                        fn = x.text
+                    if ln != "" and fn != "":
+                        authors = authors + fn + " " + ln +"; "
+                        ln = ""
+                        fn = ""                    
+        except StopIteration:
+            break
+    authors=authors[0:len(authors)-2]
+    return authors
+
+def pm_brc_fields (pubmed_id):
+    root = ET.fromstring(pm_id_search(pubmed_id))
+    
+    #pubmed_id
+    a = str(pubmed_id)
+    
+    #article title
+    b = pm_element(root,"ArticleTitle")
+    
+    #journal title
+    c = pm_element(root,"Title")
+    
+    #journal title (abbr)
+    d = pm_element(root,"ISOAbbreviation")
+    
+    #publication year   is there a better way to do these
+    e = pm_element_pubdate(root,"Year")
+    
+    #publication month
+    f = pm_element_pubdate(root,"Month")
+    
+    #publication volume
+    g = pm_element(root,"Volume")
+    
+    #publication issue
+    h = pm_element(root,"Issue")
+    
+    #publication page
+    i = pm_element(root,"MedlinePgn")
+    
+    #doi
+    j = pm_element_doi(root)
+    
+    #authors
+    k = pm_element_authors(root)
+    
+    return [a,b,c,d,e,f,g,h,i,j,k]
+    
+#
+# main function below
+#
+
+import datetime
+
+def pm_brc_fields_many(id_list):
+    print (datetime.datetime.now())
+    print ('Processing ' + str(len(id_list)) + ' IDs' + '\n')
+    output = []
+    c = 0
+    for pmid in id_list:
+        c+=1
+        output.append(pm_brc_fields(pmid))
+        if c % 20 == 0:
+            print (datetime.datetime.now())
+            print ('Processed ' + str(c) + " IDs" + '\n')
+    print (datetime.datetime.now())
+    print ('Processed all ' + str(len(id_list)) + ' IDs')
+    return output
+
+test_au = ['Charles Wolfe','James Spicer','Carsten Flohr']
+test_ad = ['kcl',"king's college london","kings college london"]
+
+# test input
+# pm_brc_fields_many(pm_multiids_list(test_au,test_ad))
+
+ 
